@@ -299,6 +299,7 @@ static void udp_recv_task(void *pvParameters)
                 cJSON *aht_ok_item = cJSON_GetObjectItem(json, "aht_ok");
                 cJSON *bmp_ok_item = cJSON_GetObjectItem(json, "bmp_ok");
                 cJSON *seq_item = cJSON_GetObjectItem(json, "seq");
+                cJSON *rssi_item = cJSON_GetObjectItem(json, "rssi");
                 
                 if (child_no_item && aht_t01_item && aht_rh01_item && 
                     bmp_t01_item && bmp_p01_item && aht_ok_item && 
@@ -313,6 +314,12 @@ static void udp_recv_task(void *pvParameters)
                     sensor_data.aht_ok = cJSON_IsTrue(aht_ok_item);
                     sensor_data.bmp_ok = cJSON_IsTrue(bmp_ok_item);
                     sensor_data.seq = (uint32_t)cJSON_GetNumberValue(seq_item);
+                    // RSSIはオプショナル（存在しない場合は0）
+                    if (rssi_item) {
+                        sensor_data.rssi = (int)cJSON_GetNumberValue(rssi_item);
+                    } else {
+                        sensor_data.rssi = 0;
+                    }
                     
                     // 子機テーブルを更新
                     child_table_update(child_no, source_ip_str, recv_buf, current_time_ms);
@@ -320,12 +327,13 @@ static void udp_recv_task(void *pvParameters)
                     // Webサーバーに最新データを送信（子機番号付き）
                     web_server_update_sensor_data_with_child_no(child_no, &sensor_data);
                     
-                    syslog(INFO, "[RX] JSON N=%d IP=%s AHT T=%.1fC RH=%.1f%% BMP T=%.1fC P=%.1fhPa seq=%lu",
+                    syslog(INFO, "[RX] JSON N=%d IP=%s AHT T=%.1fC RH=%.1f%% BMP T=%.1fC P=%.1fhPa RSSI=%d dBm seq=%lu",
                            child_no, source_ip_str,
                            (float)sensor_data.aht_t01 / 10.0f,
                            (float)sensor_data.aht_rh01 / 10.0f,
                            (float)sensor_data.bmp_t01 / 10.0f,
                            (float)sensor_data.bmp_p01 / 10.0f,
+                           sensor_data.rssi,
                            (unsigned long)sensor_data.seq);
                 } else {
                     syslog(WARN, "[RX] JSON parse OK but missing fields IP=%s", source_ip_str);

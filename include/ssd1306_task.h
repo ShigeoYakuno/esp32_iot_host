@@ -18,13 +18,14 @@ extern "C" {
 // ==== 表示モード ====
 typedef enum {
     SSD1306_MODE_SENSOR = 0,      // センサ情報表示（デフォルト）
-    SSD1306_MODE_RESET = 1,        // reset? モード
-    SSD1306_MODE_SSID_0 = 2,       // change SSID No0? モード
-    SSD1306_MODE_SSID_1 = 3,       // change SSID No1? モード
-    SSD1306_MODE_SSID_2 = 4,       // change SSID No2? モード
-    SSD1306_MODE_SSID_3 = 5,       // change SSID No3? モード
-    SSD1306_MODE_SSID_4 = 6,       // change SSID No4? モード
-    SSD1306_MODE_WIFI_PASS = 7,    // forget wifi password? モード
+    SSD1306_MODE_VERSION = 1,     // VERSION表示モード
+    SSD1306_MODE_RESET = 2,       // reset? モード
+    SSD1306_MODE_SSID_0 = 3,      // change SSID No0? モード
+    SSD1306_MODE_SSID_1 = 4,      // change SSID No1? モード
+    SSD1306_MODE_SSID_2 = 5,      // change SSID No2? モード
+    SSD1306_MODE_SSID_3 = 6,      // change SSID No3? モード
+    SSD1306_MODE_SSID_4 = 7,      // change SSID No4? モード
+    SSD1306_MODE_WIFI_PASS = 8,   // forget wifi password? モード
 } ssd1306_display_mode_t;
 
 // ==== 公開関数 ====

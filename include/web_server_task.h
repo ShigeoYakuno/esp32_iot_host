@@ -17,6 +17,7 @@ typedef struct temp_sens_data {
     bool aht_ok;        // 今回のAHT測定成功フラグ
     bool bmp_ok;        // 今回のBMP測定成功フラグ
     uint32_t seq;       // 送信ごとにインクリメントする連番
+    int rssi;           // RSSI値（dBm、通常-100～0、取得失敗時は0）
 } temp_sens_data_t;
 
 void start_web_server_task(void);

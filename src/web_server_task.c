@@ -65,10 +65,10 @@ static const char html_page[] =
 "<button id='log-button' class='log-button' onclick='toggleLogging()'>ロギングON</button>"
 "</div>"
 "<div class='children-grid'>"
-"<div class='child-card'><div class='child-header' id='child1-header'>子機1</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child1-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child1-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child1-pressure' class='sensor-value na'>--</span></div></div>"
-"<div class='child-card'><div class='child-header' id='child2-header'>子機2</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child2-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child2-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child2-pressure' class='sensor-value na'>--</span></div></div>"
-"<div class='child-card'><div class='child-header' id='child3-header'>子機3</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child3-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child3-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child3-pressure' class='sensor-value na'>--</span></div></div>"
-"<div class='child-card'><div class='child-header' id='child4-header'>子機4</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child4-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child4-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child4-pressure' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child1-header'>子機1</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child1-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child1-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child1-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child1-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child2-header'>子機2</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child2-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child2-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child2-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child2-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child3-header'>子機3</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child3-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child3-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child3-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child3-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child4-header'>子機4</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child4-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child4-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child4-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child4-rssi' class='sensor-value na'>--</span></div></div>"
 "</div>"
 "<script>"
 "let loggingState=false;"
@@ -106,7 +106,7 @@ static const char html_page[] =
 "let csv='';"
 "for(let i=0;i<logData.length;i++){"
 "const entry=logData[i];"
-"csv+=entry.timestamp+','+entry.childNo+','+entry.temp+','+entry.rh+','+entry.pressure+'\\n';"
+"csv+=entry.timestamp+','+entry.childNo+','+entry.temp+','+entry.rh+','+entry.pressure+','+entry.rssi+'\\n';"
 "}"
 "const blob=new Blob([csv],{type:'text/plain;charset=utf-8'});"
 "const url=URL.createObjectURL(blob);"
@@ -142,14 +142,17 @@ static const char html_page[] =
 "const temp=(child.aht_t01/10).toFixed(1);"
 "const rh=(child.aht_rh01/10).toFixed(1);"
 "const pressure=(child.bmp_p01/10).toFixed(1);"
+"const rssi=child.rssi!==undefined?child.rssi:0;"
 "document.getElementById('child'+idx+'-temp').textContent=temp+' ℃';"
 "document.getElementById('child'+idx+'-temp').classList.remove('na');"
 "document.getElementById('child'+idx+'-rh').textContent=rh+' %';"
 "document.getElementById('child'+idx+'-rh').classList.remove('na');"
 "document.getElementById('child'+idx+'-pressure').textContent=pressure+' hPa';"
 "document.getElementById('child'+idx+'-pressure').classList.remove('na');"
+"document.getElementById('child'+idx+'-rssi').textContent=rssi+' dBm';"
+"document.getElementById('child'+idx+'-rssi').classList.remove('na');"
 "if(loggingState){"
-"logData.push({timestamp:timestamp,childNo:idx,temp:temp,rh:rh,pressure:pressure});"
+"logData.push({timestamp:timestamp,childNo:idx,temp:temp,rh:rh,pressure:pressure,rssi:rssi});"
 "}"
 "}else{"
 "header.classList.add('inactive');"
@@ -159,6 +162,8 @@ static const char html_page[] =
 "document.getElementById('child'+idx+'-rh').classList.add('na');"
 "document.getElementById('child'+idx+'-pressure').textContent='--';"
 "document.getElementById('child'+idx+'-pressure').classList.add('na');"
+"document.getElementById('child'+idx+'-rssi').textContent='--';"
+"document.getElementById('child'+idx+'-rssi').classList.add('na');"
 "}"
 "}"
 "}"
@@ -234,14 +239,15 @@ static esp_err_t sensor_data_handler(httpd_req_t *req)
             
             if (is_valid) {
                 len = snprintf(p, sizeof(response) - (p - response),
-                    "{\"valid\":true,\"aht_t01\":%d,\"aht_rh01\":%u,\"bmp_t01\":%d,\"bmp_p01\":%lu,\"aht_ok\":%s,\"bmp_ok\":%s,\"seq\":%lu}",
+                    "{\"valid\":true,\"aht_t01\":%d,\"aht_rh01\":%u,\"bmp_t01\":%d,\"bmp_p01\":%lu,\"aht_ok\":%s,\"bmp_ok\":%s,\"seq\":%lu,\"rssi\":%d}",
                     (int)s_child_sensor_data[i].data.aht_t01,
                     (unsigned int)s_child_sensor_data[i].data.aht_rh01,
                     (int)s_child_sensor_data[i].data.bmp_t01,
                     (unsigned long)s_child_sensor_data[i].data.bmp_p01,
                     s_child_sensor_data[i].data.aht_ok ? "true" : "false",
                     s_child_sensor_data[i].data.bmp_ok ? "true" : "false",
-                    (unsigned long)s_child_sensor_data[i].data.seq);
+                    (unsigned long)s_child_sensor_data[i].data.seq,
+                    (int)s_child_sensor_data[i].data.rssi);
             } else {
                 len = snprintf(p, sizeof(response) - (p - response), "null");
             }
@@ -294,12 +300,13 @@ void web_server_update_sensor_data_with_child_no(uint8_t child_no, const temp_se
         kio800_send_sensor_data(child_no, data->aht_t01, data->aht_rh01, data->bmp_p01);
     }
     
-    syslog(INFO, "Web server sensor data updated: Child %d AHT T=%.1fC RH=%.1f%% BMP T=%.1fC P=%.1fhPa seq=%lu",
+    syslog(INFO, "Web server sensor data updated: Child %d AHT T=%.1fC RH=%.1f%% BMP T=%.1fC P=%.1fhPa RSSI=%d dBm seq=%lu",
            child_no,
            (float)data->aht_t01 / 10.0f,
            (float)data->aht_rh01 / 10.0f,
            (float)data->bmp_t01 / 10.0f,
            (float)data->bmp_p01 / 10.0f,
+           data->rssi,
            (unsigned long)data->seq);
 }
 

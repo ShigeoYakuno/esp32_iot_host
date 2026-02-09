@@ -12,6 +12,7 @@
 #include "log_task.h"
 #include "flash_data.h"
 #include "user_common.h"
+#include "version.h"
 #include <string.h>
 #include <stdint.h>
 
@@ -199,6 +200,9 @@ static esp_err_t ssd1306_send_data(const uint8_t *data, size_t len);
 static esp_err_t ssd1306_init_hw(void);
 static esp_err_t ssd1306_detect_address(void);
 static void ssd1306_task_entry(void *arg);
+static void ssd1306_draw_char_scaled(uint8_t x, uint8_t y, uint8_t c, uint8_t scale);
+static void ssd1306_draw_string_scaled_centered(const char *str, uint8_t scale);
+static void ssd1306_play_startup_animation(void);
 
 // ==== I2C初期化 ====
 static esp_err_t i2c_bus_init(void)
@@ -529,6 +533,121 @@ void ssd1306_display(void)
     ssd1306_send_data(s_display_buffer, sizeof(s_display_buffer));
 }
 
+// ==== スケール付き文字描画 ====
+static void ssd1306_draw_char_scaled(uint8_t x, uint8_t y, uint8_t c, uint8_t scale)
+{
+    if (c < 32 || c > 127) {
+        return;
+    }
+    
+    const uint8_t *font_data = font_5x7[c - 32];
+    
+    // 各ピクセルをスケール倍に拡大
+    for (uint8_t i = 0; i < 5; i++) {
+        uint8_t font_byte = font_data[i];
+        for (uint8_t j = 0; j < 7; j++) {
+            if (font_byte & (1 << j)) {
+                // ピクセルをスケール倍の矩形で描画
+                for (uint8_t sy = 0; sy < scale; sy++) {
+                    for (uint8_t sx = 0; sx < scale; sx++) {
+                        uint8_t px = x + (i * scale) + sx;
+                        uint8_t py = y + (j * scale) + sy;
+                        if (px < SSD1306_WIDTH && py < SSD1306_HEIGHT) {
+                            ssd1306_draw_pixel(px, py, true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==== センタリングされたスケール付き文字列描画 ====
+static void ssd1306_draw_string_scaled_centered(const char *str, uint8_t scale)
+{
+    if (str == NULL || *str == '\0') {
+        return;
+    }
+    
+    // 文字列の幅を計算（各文字5ピクセル + 文字間隔1ピクセル）
+    size_t len = strlen(str);
+    uint16_t total_width = len * 6 * scale;  // 6 = 5(文字幅) + 1(間隔)
+    
+    // センタリング位置を計算
+    uint8_t start_x = (SSD1306_WIDTH - total_width) / 2;
+    if (start_x > SSD1306_WIDTH) {
+        start_x = 0;  // はみ出す場合は左寄せ
+    }
+    
+    // 垂直方向もセンタリング
+    uint8_t char_height = 7 * scale;
+    uint8_t start_y = (SSD1306_HEIGHT - char_height) / 2;
+    
+    // 各文字を描画
+    uint8_t cx = start_x;
+    const char *p = str;
+    while (*p && cx < SSD1306_WIDTH) {
+        uint8_t c = (uint8_t)*p;
+        ssd1306_draw_char_scaled(cx, start_y, c, scale);
+        cx += 6 * scale;  // 文字間隔を含めてスケール倍
+        p++;
+    }
+}
+
+// ==== スタートアップアニメーション ====
+static void ssd1306_play_startup_animation(void)
+{
+    const char *line1 = "SCREEN";
+    const char *line2 = "IOT GATEWAY";
+    const uint8_t scale = 3;
+    const uint32_t display_time_ms = 2000;  // 2秒
+    
+    // 画面クリア
+    ssd1306_clear();
+    
+    // 1行目: "SCREEN"を中央に描画
+    size_t len1 = strlen(line1);
+    uint16_t width1 = len1 * 6 * scale;  // 6 = 5(文字幅) + 1(間隔)
+    uint8_t x1 = (SSD1306_WIDTH - width1) / 2;
+    uint8_t char_height = 7 * scale;
+    uint8_t y1 = (SSD1306_HEIGHT - char_height * 2) / 2;  // 2行分の中央
+    
+    uint8_t cx = x1;
+    const char *p = line1;
+    while (*p && cx < SSD1306_WIDTH) {
+        uint8_t c = (uint8_t)*p;
+        ssd1306_draw_char_scaled(cx, y1, c, scale);
+        cx += 6 * scale;
+        p++;
+    }
+    
+    // 2行目: "IOT GATEWAY"を中央に描画
+    size_t len2 = strlen(line2);
+    uint16_t width2 = len2 * 6 * scale;
+    uint8_t x2 = (SSD1306_WIDTH - width2) / 2;
+    uint8_t y2 = y1 + char_height + (2 * scale);  // 1行目の下に間隔を空けて配置
+    
+    cx = x2;
+    p = line2;
+    while (*p && cx < SSD1306_WIDTH) {
+        uint8_t c = (uint8_t)*p;
+        ssd1306_draw_char_scaled(cx, y2, c, scale);
+        cx += 6 * scale;
+        p++;
+    }
+    
+    // 画面に表示
+    ssd1306_display();
+    
+    // 2秒間表示
+    vTaskDelay(pdMS_TO_TICKS(display_time_ms));
+    
+    // フェードアウト（画面をクリア）
+    ssd1306_clear();
+    ssd1306_display();
+    vTaskDelay(pdMS_TO_TICKS(100));
+}
+
 void ssd1306_invert_display(bool invert)
 {
     s_display_inverted = invert;
@@ -617,6 +736,9 @@ static void ssd1306_task_entry(void *arg)
     char line[64];
     button_event_t button_event;
     TickType_t current_tick;
+    
+    // スタートアップアニメーションを実行
+    ssd1306_play_startup_animation();
 
     while (1) {
         current_tick = xTaskGetTickCount();
@@ -624,16 +746,17 @@ static void ssd1306_task_entry(void *arg)
         // ボタンイベントをチェック（非ブロッキング）
         while (xQueueReceive(s_button_queue, &button_event, 0) == pdTRUE) {
             if (button_event == BUTTON_EVENT_SW1) {
-                // SW1押下：モードをインクリメント（0→1→2→...→7→0）
+                // SW1押下：モードをインクリメント（0→1→2→...→8→0）
                 if (!s_executing) {
-                    s_display_mode = (s_display_mode + 1) % 8;
+                    s_display_mode = (s_display_mode + 1) % 9;
                     s_mode_timer = current_tick + pdMS_TO_TICKS(10000);  // 10秒後にタイムアウト
                     s_result_message[0] = '\0';  // 結果メッセージをクリア
                     syslog(INFO, "SSD1306: Mode changed to %d", s_display_mode);
                 }
             } else if (button_event == BUTTON_EVENT_SW2) {
-                // SW2押下：モード0以外の時、実行
-                if (!s_executing && s_display_mode != SSD1306_MODE_SENSOR) {
+                // SW2押下：モード0と8以外の時、実行
+                if (!s_executing && s_display_mode != SSD1306_MODE_SENSOR && 
+                    s_display_mode != SSD1306_MODE_VERSION) {
                     execute_mode_action(s_display_mode, current_tick);
                     s_mode_timer = current_tick + pdMS_TO_TICKS(10000);  // タイマーリセット
                 }
@@ -655,7 +778,10 @@ static void ssd1306_task_entry(void *arg)
         }
         
         // モードのタイマーチェック（10秒経過でモード0に戻る）
-        if (s_display_mode != SSD1306_MODE_SENSOR && s_mode_timer != 0) {
+        // VERSIONモードはタイマーで戻らない（常時表示可能）
+        if (s_display_mode != SSD1306_MODE_SENSOR && 
+            s_display_mode != SSD1306_MODE_VERSION && 
+            s_mode_timer != 0) {
             if (current_tick >= s_mode_timer) {
                 s_display_mode = SSD1306_MODE_SENSOR;
                 s_mode_timer = 0;
@@ -679,13 +805,13 @@ static void ssd1306_task_entry(void *arg)
                     // 有効なデータがある場合
                     float temp = (float)data.aht_t01 / 10.0f;
                     float rh = (float)data.aht_rh01 / 10.0f;
-                    float pressure = (float)data.bmp_p01 / 10.0f;
+                    int rssi = data.rssi;
                     
-                    snprintf(line, sizeof(line), "%d  %.1fC  %.1f%%  %.1fhPa",
-                             child_no, temp, rh, pressure);
+                    snprintf(line, sizeof(line), "%d %.1fC %.1f%% %ddBm",
+                             child_no, temp, rh, rssi);
                 } else {
                     // 無効なデータまたは通信できなかった場合
-                    snprintf(line, sizeof(line), "%d  0.0C  0.0%%  0.0hPa", child_no);
+                    snprintf(line, sizeof(line), "%d 0.0C 0.0%% 0dBm", child_no);
                 }
                 
                 // 各行を表示（ページ0-3、各ページは8ピクセル高さ）
@@ -734,11 +860,33 @@ static void ssd1306_task_entry(void *arg)
                     case SSD1306_MODE_WIFI_PASS:
                         snprintf(line, sizeof(line), "forget wifi password?");
                         break;
+                    case SSD1306_MODE_VERSION:
+                        // モード1: VERSION表示
+                        if (version != NULL) {
+                            snprintf(line, sizeof(line), "VERSION");
+                            ssd1306_draw_string(0, 0, line);
+                            // 2行目にバージョン文字列を表示
+                            ssd1306_draw_string(0, 1, version);
+                            // 3行目にgateway noを表示
+                            uint32_t ssid_no = getSsidNo();
+                            snprintf(line, sizeof(line), "gateway no = %lu", (unsigned long)ssid_no);
+                            ssd1306_draw_string(0, 2, line);
+                        } else {
+                            snprintf(line, sizeof(line), "VERSION (N/A)");
+                            ssd1306_draw_string(0, 0, line);
+                            // gateway noは表示
+                            uint32_t ssid_no = getSsidNo();
+                            snprintf(line, sizeof(line), "gateway no = %lu", (unsigned long)ssid_no);
+                            ssd1306_draw_string(0, 1, line);
+                        }
+                        break;
                     default:
                         snprintf(line, sizeof(line), "unknown mode");
                         break;
                 }
-                ssd1306_draw_string(0, 0, line);
+                if (s_display_mode != SSD1306_MODE_VERSION) {
+                    ssd1306_draw_string(0, 0, line);
+                }
             }
         }
         
