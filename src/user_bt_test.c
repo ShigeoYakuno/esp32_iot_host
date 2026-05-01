@@ -6,7 +6,7 @@
 #include "bluetooth_task.h"
 #include "log_task.h"
 #include "isr_func.h"
-#include "enet_task.h"
+#include "enet_rmii_lan8720.h"
 #include "flash_data.h"
 #include "user_bt_test.h"
 #include "user_common.h"

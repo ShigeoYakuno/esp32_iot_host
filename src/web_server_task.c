@@ -9,8 +9,6 @@
 #include "web_server_task.h"
 #include "log_task.h"
 #include "wifi_task.h"
-#include "child_led.h"
-#include "kio800.h"
 
 static httpd_handle_t s_server = NULL;
 
@@ -60,15 +58,15 @@ static const char html_page[] =
 "</style>"
 "</head>"
 "<body>"
-"<div class='header'><h1>LUPIOS 環境モニタ</h1></div>"
+"<div class='header'><h1>SMARTHOME 環境モニタ</h1></div>"
 "<div class='led-section'>"
 "<button id='log-button' class='log-button' onclick='toggleLogging()'>ロギングON</button>"
 "</div>"
 "<div class='children-grid'>"
-"<div class='child-card'><div class='child-header' id='child1-header'>子機1</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child1-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child1-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child1-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child1-rssi' class='sensor-value na'>--</span></div></div>"
-"<div class='child-card'><div class='child-header' id='child2-header'>子機2</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child2-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child2-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child2-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child2-rssi' class='sensor-value na'>--</span></div></div>"
-"<div class='child-card'><div class='child-header' id='child3-header'>子機3</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child3-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child3-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child3-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child3-rssi' class='sensor-value na'>--</span></div></div>"
-"<div class='child-card'><div class='child-header' id='child4-header'>子機4</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child4-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child4-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child4-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child4-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child1-header'>部屋A</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child1-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child1-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child1-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child1-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child2-header'>部屋B</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child2-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child2-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child2-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child2-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child3-header'>部屋C</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child3-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child3-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child3-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child3-rssi' class='sensor-value na'>--</span></div></div>"
+"<div class='child-card'><div class='child-header' id='child4-header'>部屋D</div><div class='sensor-item'><span class='sensor-label'>温度:</span><span id='child4-temp' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>湿度:</span><span id='child4-rh' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>気圧:</span><span id='child4-pressure' class='sensor-value na'>--</span></div><div class='sensor-item'><span class='sensor-label'>RSSI:</span><span id='child4-rssi' class='sensor-value na'>--</span></div></div>"
 "</div>"
 "<script>"
 "let loggingState=false;"
@@ -292,14 +290,6 @@ void web_server_update_sensor_data_with_child_no(uint8_t child_no, const temp_se
     s_child_sensor_data[idx].last_update_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
     xSemaphoreGive(s_sensor_data_mutex);
     
-    // 子機LEDをトグル
-    toggle_child_led(child_no);
-    
-    // KIO800にデータ送信（データが有効な場合のみ）
-    if (data->aht_ok && data->bmp_ok) {
-        kio800_send_sensor_data(child_no, data->aht_t01, data->aht_rh01, data->bmp_p01);
-    }
-    
     syslog(INFO, "Web server sensor data updated: Child %d AHT T=%.1fC RH=%.1f%% BMP T=%.1fC P=%.1fhPa RSSI=%d dBm seq=%lu",
            child_no,
            (float)data->aht_t01 / 10.0f,
@@ -421,12 +411,6 @@ static void web_server_task(void *pvParameters)
         return;
     }
     syslog(INFO, "Web server task: sensor data mutex created");
-    
-    // 子機LED初期化
-    init_child_leds();
-    
-    // KIO800初期化
-    kio800_init();
     
     // 初期データを0で初期化（表示用）
     memset(s_child_sensor_data, 0, sizeof(s_child_sensor_data));

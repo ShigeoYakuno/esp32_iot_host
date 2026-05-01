@@ -16,7 +16,7 @@
 #include "sd_task.h"
 
 #include "isr_func.h"
-#include "enet_task.h"
+#include "enet_rmii_lan8720.h"
 #include "flash_data.h"
 #include "bluetooth_task.h"
 #include "web_server_task.h"
@@ -98,13 +98,13 @@ void app_main(void)
 #if 1
     // === 6. 通常処理 ===
     syslog(INFO, "System start");
+    start_enet_rmii_lan8720_task();
+    syslog(INFO, "enet_rmii task created");
     start_userIO_task();
     start_test_task();
     //start_user_bt_test_task();
     //start_sd_task();
-    start_ssd1306_task();  // SSD1306 OLEDディスプレイ
-
-    //start_enet_task();
+    start_ssd1306_task();
 
 #endif
     while (1) {

@@ -597,7 +597,7 @@ static void ssd1306_draw_string_scaled_centered(const char *str, uint8_t scale)
 // ==== スタートアップアニメーション ====
 static void ssd1306_play_startup_animation(void)
 {
-    const char *line1 = "SCREEN";
+    const char *line1 = "SMARTHOME";
     const char *line2 = "IOT GATEWAY";
     const uint8_t scale = 3;
     const uint32_t display_time_ms = 2000;  // 2秒
@@ -605,7 +605,6 @@ static void ssd1306_play_startup_animation(void)
     // 画面クリア
     ssd1306_clear();
     
-    // 1行目: "SCREEN"を中央に描画
     size_t len1 = strlen(line1);
     uint16_t width1 = len1 * 6 * scale;  // 6 = 5(文字幅) + 1(間隔)
     uint8_t x1 = (SSD1306_WIDTH - width1) / 2;
