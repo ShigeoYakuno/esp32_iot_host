@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebSearch",
-      "WebFetch(domain:ww1.microchip.com)",
-      "Bash(find /c/Users/yakun/.platformio -name *.c)"
-    ]
-  }
-}
