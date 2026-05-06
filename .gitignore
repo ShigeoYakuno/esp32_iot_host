@@ -12,3 +12,6 @@ sdkconfig
 sdkconfig.old
 *.log
 
+.claude/ 
+__pycache__/ 
+*.pyc 
